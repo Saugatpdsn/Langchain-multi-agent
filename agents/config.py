@@ -10,6 +10,7 @@ the process environment before building the graph, so every node's
 from __future__ import annotations
 
 import os
+import streamlit as st
 
 from dotenv import load_dotenv
 
@@ -25,6 +26,8 @@ FREE_MODELS: list[str] = [
 
 DEFAULT_MODEL = FREE_MODELS[0]
 
+
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
 def get_llm(*, model: str | None = None, temperature: float = 0.0):
     """Return a ``ChatGoogleGenerativeAI`` instance for the configured model.
