@@ -1,208 +1,137 @@
-# 🧠 Multi-Agent Research Assistant
+# 🧠 Multi-Agent Research Assistant — Streamlit
 
-A simple **multi-agent AI system** that takes a research question, searches the web, writes a report, and reviews the result.
+A **multi-agent AI system** that takes a research question, searches the web, writes a cited report, and reviews itself — with a Streamlit UI. Built with **LangGraph**, running on **Google Gemini's free tier**, using **DuckDuckGo** for search (no search API key needed).
 
-I built this project to learn how **LangGraph and multi-agent systems** work.
-
-The project uses different agents for different tasks:
-
-* 🔍 **Researcher** — searches the web and collects information
-* ✍️ **Writer** — creates the research report
-* 🧐 **Reviewer** — checks the report and suggests improvements
-* 🎯 **Supervisor** — manages the workflow
+This is a frontend-only project: `streamlit_app.py` calls the LangGraph agent graph directly in-process. There is no separate backend server to run or deploy.
 
 ---
 
 ## ✨ Features
 
-* Multi-agent workflow using LangGraph
-* Web search using DuckDuckGo
-* Automatic research report generation
-* Report review and revision
-* Source citations
-* Basic citation validation
-* Optional human review
-* Streaming agent progress
-* Support for Groq, Gemini, OpenAI, and Anthropic
-* LangSmith support
+* Streamlit UI: enter a question, watch the agents work, read the report
+* Multi-agent workflow: Supervisor → Researcher → Writer → Validate → Reviewer
+* Live agent trace as the graph streams
+* Deterministic grounding gate — refuses to show a report with unsupported or fabricated citations
+* Optional human-in-the-loop: approve or request a revision before the run finishes
+* Sidebar model picker for Gemini's free-tier models
+* Download the final report as Markdown
 
 ---
 
-## 🏗️ How It Works
+## 🏗️ How it works
 
 ```text
 User Question
       ↓
   Supervisor
       ↓
-  Researcher
-      ↓
-  Web Search
+  Researcher → Web Search (DuckDuckGo)
       ↓
     Writer
       ↓
-    Review
+   Validate (deterministic grounding check)
+      ↓
+   Reviewer
    ↙     ↘
 Revise   Accept
   ↓        ↓
-Writer    Final Report
+Writer   Final Report
 ```
 
-The **Supervisor** controls the workflow.
-
-The **Researcher** collects information from the web.
-
-The **Writer** creates the report using the collected sources.
-
-The **Reviewer** checks the report. If changes are needed, the Writer improves it.
+If human-in-the-loop is enabled, the graph pauses after the Reviewer so you can approve the draft or send it back for another revision — right from the UI.
 
 ---
 
-## 🤖 Agents
+## 🚀 Getting started (local, no Docker)
 
-### 🎯 Supervisor
-
-Controls which agent should work next.
-
-### 🔍 Researcher
-
-Searches the web and collects useful information and sources.
-
-### ✍️ Writer
-
-Uses the research to create a structured report with citations.
-
-### 🧐 Reviewer
-
-Checks the report for quality, clarity, completeness, and citations.
-
----
-
-## 🧠 LangGraph Workflow
-
-The project uses **LangGraph** to connect the agents and share information between them.
-
-```mermaid
-graph TD
-    A[User Question] --> B[Supervisor]
-    B --> C[Researcher]
-    C --> B
-    B --> D[Writer]
-    D --> E[Validate]
-    E --> F[Reviewer]
-    F -->|Revise| D
-    F -->|Accept| G[Final Report]
-```
-
----
-
-## 🛠️ Tech Stack
-
-| Technology                         | Purpose            |
-| ---------------------------------- | ------------------ |
-| Python                             | Main language      |
-| LangGraph                          | Agent workflow     |
-| LangChain                          | LLM integration    |
-| Gemini / Groq / OpenAI / Anthropic | LLMs               |
-| DuckDuckGo                         | Web search         |
-| Pydantic                           | Data validation    |
-| LangSmith                          | Monitoring         |
-| uv                                 | Package management |
-
----
-
-## 🚀 Getting Started
-
-### 1. Clone the repository
+### 1. Install dependencies
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/multi-agent-research-assistant.git
-cd multi-agent-research-assistant
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-### 2. Install dependencies
+### 2. Get a free Gemini API key
+
+Create one at <https://aistudio.google.com/app/apikey> (free tier).
+
+### 3. Provide your key (without typing it into the UI)
+
+The app never shows your key as a plain field by default — it looks for it in this order:
+
+1. `.streamlit/secrets.toml` — copy `.streamlit/secrets.toml.example` and fill it in
+2. `.env` — copy `.env.example` and fill it in
+3. A "just for this session" field tucked behind a sidebar expander, only shown if neither of the above is set
+
+### 4. Run the app
 
 ```bash
-uv sync
+streamlit run streamlit_app.py
 ```
 
-### 3. Create `.env`
-
-Example:
-
-```env
-LLM_PROVIDER=gemini
-GOOGLE_API_KEY=your_api_key
-```
-
-### 4. Run the project
-
-```bash
-uv run python main.py "What are the latest developments in AI?"
-```
-
-For more details:
-
-```bash
-uv run python main.py --verbose "What are AI agents?"
-```
+The sidebar shows a green "connected" pill once a key is found, and never prints the key itself.
 
 ---
 
-## 📁 Project Structure
+## 📁 Project structure
 
 ```text
-multi-agent-research-assistant/
-│
+.
+├── streamlit_app.py       # Frontend — the only entry point
 ├── agents/
-│   ├── config.py
-│   ├── graph.py
-│   └── tools.py
-│
-├── main.py
-├── pyproject.toml
-├── Dockerfile
-├── .env-template
+│   ├── config.py          # Gemini LLM setup (free-tier models)
+│   ├── graph.py           # LangGraph state graph (supervisor/researcher/writer/reviewer)
+│   └── tools.py           # DuckDuckGo web search + summarise tool
+├── requirements.txt
+├── .env.example
+├── .streamlit/secrets.toml.example
 └── README.md
 ```
 
----
+**What was removed from the original project**, per request:
+* `main.py` (the CLI entry point) — the Streamlit app is now the only frontend
+* `Dockerfile` — you're building/deploying your own image
+* Groq / OpenAI / Anthropic provider code in `agents/config.py` — Gemini only
+* `pyproject.toml` / `uv.lock` — replaced with a plain `requirements.txt`
+* `tests/` — they exercised the CLI (`main.py`) and multi-provider config that no longer exist
 
-## 🎯 Why I Built This
-
-I built this project to understand how multiple AI agents can work together instead of using a single AI model for everything.
-
-Through this project, I learned about:
-
-* LangGraph
-* Multi-agent systems
-* Agent routing
-* Tool calling
-* Web research
-* Structured outputs
-* Human-in-the-loop
-* LLM workflows
+The core agent logic (`agents/graph.py`, `agents/tools.py`) is unchanged from the original.
 
 ---
 
-## 🔮 Future Improvements
+## 🐳 Deploying with your own Docker image
 
-* Better web search
-* Parallel research agents
-* Better citation checking
-* PDF report generation
-* Frontend interface
-* Conversation history
-* More advanced evaluation
+No `Dockerfile` is included since you're handling that yourself. A minimal one for this app would look like:
+
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE 8501
+ENTRYPOINT ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+```
+
+Pass `GOOGLE_API_KEY` in at runtime (`-e GOOGLE_API_KEY=...` or `--env-file .env`) so it's picked up automatically — the sidebar's manual-entry expander is only a fallback for when no key is configured.
+
+---
+
+## 🛠️ Tech stack
+
+| Technology | Purpose |
+| --- | --- |
+| Streamlit | Frontend UI |
+| LangGraph | Agent workflow / state machine |
+| LangChain | LLM + tool integration |
+| Google Gemini (free tier) | LLM |
+| DuckDuckGo | Web search (no API key) |
+| Pydantic | State validation |
 
 ---
 
 ## 👤 Author
 
 **Saugat Pudasaini**
-
 IT Undergraduate | AI/ML & Generative AI Enthusiast
-
-Currently learning:
-
-**Python • Machine Learning • GenAI • RAG • AI Agents • LangChain • LangGraph • React • FastAPI**
