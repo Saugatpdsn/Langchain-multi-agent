@@ -1,4 +1,11 @@
-"""LLM provider configuration with multi-provider support."""
+"""LLM configuration - Google Gemini only (free-tier models).
+
+Simplified from the original multi-provider setup: this app is built to run
+on Google's Gemini API free tier, so Groq/OpenAI/Anthropic support was
+removed. The Streamlit frontend sets ``GOOGLE_API_KEY`` / ``LLM_MODEL`` in
+the process environment before building the graph, so every node's
+``get_llm()`` call (no args) picks them up automatically.
+"""
 
 from __future__ import annotations
 
@@ -8,84 +15,42 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_DEFAULTS: dict[str, dict[str, str]] = {
-    "groq": {"model": "llama-3.3-70b-versatile", "env_key": "GROQ_API_KEY"},
-    "gemini": {"model": "gemini-2.5-flash-lite", "env_key": "GOOGLE_API_KEY"},
-    "openai": {"model": "gpt-4o", "env_key": "OPENAI_API_KEY"},
-    "anthropic": {"model": "claude-sonnet-4-5-20250929", "env_key": "ANTHROPIC_API_KEY"},
-}
+# Gemini models that are available on the free tier as of writing. Shown in
+# the Streamlit sidebar as a dropdown.
+FREE_MODELS: list[str] = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.0-flash",
+]
+
+DEFAULT_MODEL = FREE_MODELS[0]
 
 
-def get_llm(
-    *,
-    provider: str | None = None,
-    model: str | None = None,
-    temperature: float = 0.0,
-):
-    """Return a chat model instance based on the configured provider.
-
-    Resolution order for *provider*:
-        1. Explicit ``provider`` argument.
-        2. ``LLM_PROVIDER`` environment variable.
-        3. Falls back to ``"groq"`` (the free default).
+def get_llm(*, model: str | None = None, temperature: float = 0.0):
+    """Return a ``ChatGoogleGenerativeAI`` instance for the configured model.
 
     Parameters
     ----------
-    provider:
-        ``"groq"``, ``"gemini"``, ``"openai"``, or ``"anthropic"``.
     model:
-        Override the default model name for the chosen provider.
+        Overrides the model name. Falls back to the ``LLM_MODEL`` env var,
+        then to :data:`DEFAULT_MODEL`.
     temperature:
         Sampling temperature. Defaults to ``0.0`` for deterministic output.
 
-    Returns
-    -------
-    ChatOpenAI | ChatAnthropic
-        A ready-to-use chat model.
-
     Raises
     ------
-    ValueError
-        If the provider string is not recognised.
     RuntimeError
-        If the required API key environment variable is not set.
+        If ``GOOGLE_API_KEY`` is not set in the environment.
     """
-    provider = (provider or os.getenv("LLM_PROVIDER", "groq")).lower().strip()
-
-    if provider not in _DEFAULTS:
-        raise ValueError(
-            f"Unknown LLM provider '{provider}'. Choose from: {', '.join(_DEFAULTS)}"
-        )
-
-    cfg = _DEFAULTS[provider]
-    model = model or os.getenv("LLM_MODEL") or cfg["model"]
-
-    api_key = os.getenv(cfg["env_key"])
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise RuntimeError(
-            f"{cfg['env_key']} environment variable is required for provider '{provider}'"
+            "GOOGLE_API_KEY is not set. Enter your Gemini API key in the "
+            "sidebar, or set it in a .env file."
         )
 
-    # Lazy provider imports so only the SDK for the chosen provider is required.
-    if provider == "groq":
-        from langchain_groq import ChatGroq
+    model = model or os.getenv("LLM_MODEL") or DEFAULT_MODEL
 
-        # Retry transient network errors / 429s with backoff so a single blip
-        # doesn't abort the whole multi-step run.
-        return ChatGroq(
-            model=model, temperature=temperature, api_key=api_key, max_retries=5
-        )
+    from langchain_google_genai import ChatGoogleGenerativeAI
 
-    if provider == "gemini":
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        return ChatGoogleGenerativeAI(model=model, temperature=temperature, api_key=api_key)
-
-    if provider == "openai":
-        from langchain_openai import ChatOpenAI
-
-        return ChatOpenAI(model=model, temperature=temperature, api_key=api_key)
-
-    from langchain_anthropic import ChatAnthropic
-
-    return ChatAnthropic(model=model, temperature=temperature, api_key=api_key)
+    return ChatGoogleGenerativeAI(model=model, temperature=temperature, api_key=api_key)
