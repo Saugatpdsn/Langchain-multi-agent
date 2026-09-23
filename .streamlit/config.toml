@@ -1,0 +1,14 @@
+# Pins the app to one theme so it always renders correctly. Without this,
+# Streamlit follows the visitor's OS/browser color scheme while our custom
+# CSS (in streamlit_app.py) only paints a light-mode look -- on a dark-mode
+# device that mismatch is exactly what made text unreadable.
+[theme]
+base = "light"
+primaryColor = "#B5533C"
+backgroundColor = "#F3F1EB"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1C2230"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
