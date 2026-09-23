@@ -1,137 +1,214 @@
-# 🧠 Multi-Agent Research Assistant — Streamlit
 
-A **multi-agent AI system** that takes a research question, searches the web, writes a cited report, and reviews itself — with a Streamlit UI. Built with **LangGraph**, running on **Google Gemini's free tier**, using **DuckDuckGo** for search (no search API key needed).
+# 🧠 Multi-Agent Research Assistant
 
-This is a frontend-only project: `streamlit_app.py` calls the LangGraph agent graph directly in-process. There is no separate backend server to run or deploy.
+An AI-powered research assistant that transforms research questions into structured, evidence-based reports. Built with **LangGraph, Google Gemini, and Streamlit**, it uses a multi-agent workflow to research topics, generate cited reports, and review its own output.
 
----
+The application integrates DuckDuckGo for web search and Gemini's free-tier API to make AI-powered research accessible.
 
 ## ✨ Features
 
-* Streamlit UI: enter a question, watch the agents work, read the report
-* Multi-agent workflow: Supervisor → Researcher → Writer → Validate → Reviewer
-* Live agent trace as the graph streams
-* Deterministic grounding gate — refuses to show a report with unsupported or fabricated citations
-* Optional human-in-the-loop: approve or request a revision before the run finishes
-* Sidebar model picker for Gemini's free-tier models
-* Download the final report as Markdown
+- **Multi-Agent Architecture:** Specialized agents collaborate to research, write, validate, and review reports.
+- **Real-Time Agent Tracing:** Follow agent progress as the research runs.
+- **Web-Based Research:** Retrieve relevant information using DuckDuckGo.
+- **Cited Research Reports:** Generate structured reports supported by retrieved sources.
+- **Grounding Validation:** Validate citations against collected research sources.
+- **Self-Review & Revision:** The Reviewer evaluates drafts and can request revisions.
+- **Human-in-the-Loop:** Approve reports or request changes before completion.
+- **Interactive Streamlit UI:** Submit research questions and view results.
+- **Downloadable Reports:** Export the final report as a Markdown file.
+- **Gemini Model Selection:** Choose from supported Gemini models.
 
----
+## 🏗️ System Architecture
 
-## 🏗️ How it works
+The application uses LangGraph to coordinate multiple agents through a structured research workflow.
 
 ```text
-User Question
-      ↓
-  Supervisor
-      ↓
-  Researcher → Web Search (DuckDuckGo)
-      ↓
-    Writer
-      ↓
-   Validate (deterministic grounding check)
-      ↓
-   Reviewer
-   ↙     ↘
-Revise   Accept
-  ↓        ↓
-Writer   Final Report
+             User Question
+                   |
+                   v
+              Supervisor
+                   |
+                   v
+              Researcher
+                   |
+                   v
+          DuckDuckGo Search
+                   |
+                   v
+                Writer
+                   |
+                   v
+         Grounding Validation
+                   |
+                   v
+                Reviewer
+                   |
+             +-----+-----+
+             |           |
+             v           v
+           Revise      Accept
+             |           |
+             v           v
+           Writer    Final Report
 ```
 
-If human-in-the-loop is enabled, the graph pauses after the Reviewer so you can approve the draft or send it back for another revision — right from the UI.
+### Agent Responsibilities
 
----
+| Component | Responsibility |
+|---|---|
+| Supervisor | Coordinates the research workflow |
+| Researcher | Searches the web and collects relevant information |
+| Writer | Creates a structured report using research findings |
+| Validator | Checks citations against collected sources |
+| Reviewer | Evaluates the report and requests revisions |
 
-## 🚀 Getting started (local, no Docker)
+When Human-in-the-Loop is enabled, the workflow can pause after the Reviewer, allowing the user to approve the draft or request another revision.
 
-### 1. Install dependencies
+## 🛠️ Tech Stack
+
+| Technology | Purpose |
+|---|---|
+| Python | Core application logic |
+| Streamlit | Interactive user interface |
+| LangGraph | Multi-agent orchestration |
+| LangChain | LLM and tool integration |
+| Google Gemini | Research, writing, and review |
+| DuckDuckGo Search | Web research and information retrieval |
+| Pydantic | Data validation and structured state |
+
+## 📁 Project Structure
+
+```text
+Multi-Agent-Research-Assistant/
+│
+├── streamlit_app.py
+│
+├── agents/
+│   ├── config.py
+│   ├── graph.py
+│   └── tools.py
+│
+├── .streamlit/
+│   └── secrets.toml.example
+│
+├── .env.example
+├── requirements.txt
+└── README.md
+```
+
+### Key Files
+
+- `streamlit_app.py` — Streamlit interface and application entry point.
+- `agents/config.py` — Gemini model configuration.
+- `agents/graph.py` — LangGraph workflow, agent nodes, and transitions.
+- `agents/tools.py` — DuckDuckGo search and research utilities.
+- `requirements.txt` — Python project dependencies.
+- `.env.example` — Example environment variable configuration.
+
+## 🚀 Getting Started
+
+Follow these steps to run the project locally.
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/YOUR_USERNAME/Multi-Agent-Research-Assistant.git
+
+cd Multi-Agent-Research-Assistant
+```
+
+### 2. Create a Virtual Environment
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+```
+
+Activate the environment.
+
+**Windows (PowerShell):**
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+**Linux / macOS:**
+
+```bash
+source .venv/bin/activate
+```
+
+### 3. Install Dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### 2. Get a free Gemini API key
+### 4. Configure Google Gemini API Key
 
-Create one at <https://aistudio.google.com/app/apikey> (free tier).
+Get a Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-### 3. Provide your key (without typing it into the UI)
+Create a `.env` file in the project root:
 
-The app never shows your key as a plain field by default — it looks for it in this order:
+```env
+GOOGLE_API_KEY=your_gemini_api_key
+```
 
-1. `.streamlit/secrets.toml` — copy `.streamlit/secrets.toml.example` and fill it in
-2. `.env` — copy `.env.example` and fill it in
-3. A "just for this session" field tucked behind a sidebar expander, only shown if neither of the above is set
+Alternatively, configure the key using Streamlit secrets.
 
-### 4. Run the app
+Create `.streamlit/secrets.toml`:
+
+```toml
+GOOGLE_API_KEY = "your_gemini_api_key"
+```
+
+Keep your API key private. Do not commit `.env` or `secrets.toml` to GitHub.
+
+### 5. Run the Application
 
 ```bash
 streamlit run streamlit_app.py
 ```
 
-The sidebar shows a green "connected" pill once a key is found, and never prints the key itself.
-
----
-
-## 📁 Project structure
+The application will open in your browser, usually at:
 
 ```text
-.
-├── streamlit_app.py       # Frontend — the only entry point
-├── agents/
-│   ├── config.py          # Gemini LLM setup (free-tier models)
-│   ├── graph.py           # LangGraph state graph (supervisor/researcher/writer/reviewer)
-│   └── tools.py           # DuckDuckGo web search + summarise tool
-├── requirements.txt
-├── .env.example
-├── .streamlit/secrets.toml.example
-└── README.md
+http://localhost:8501
 ```
 
-**What was removed from the original project**, per request:
-* `main.py` (the CLI entry point) — the Streamlit app is now the only frontend
-* `Dockerfile` — you're building/deploying your own image
-* Groq / OpenAI / Anthropic provider code in `agents/config.py` — Gemini only
-* `pyproject.toml` / `uv.lock` — replaced with a plain `requirements.txt`
-* `tests/` — they exercised the CLI (`main.py`) and multi-provider config that no longer exist
+Enter a research question and let the agents generate your report.
 
-The core agent logic (`agents/graph.py`, `agents/tools.py`) is unchanged from the original.
+## 🔍 Example Research Questions
 
----
+- What are the recent developments in Generative AI?
+- How is AI being used in healthcare?
+- What are the applications of multi-agent systems?
+- Compare RAG and fine-tuning for large language models.
+- What are the challenges of AI adoption in Nepal?
 
-## 🐳 Deploying with your own Docker image
+## 🧠 Key Learning Outcomes
 
-No `Dockerfile` is included since you're handling that yourself. A minimal one for this app would look like:
+- Building multi-agent AI systems using LangGraph.
+- Designing stateful workflows with conditional transitions.
+- Integrating LLMs with external search tools.
+- Implementing iterative review and revision loops.
+- Applying source-grounding checks to LLM-generated reports.
+- Building interactive AI applications with Streamlit.
+- Managing API keys and environment-based configuration.
 
-```dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-EXPOSE 8501
-ENTRYPOINT ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-```
+## ⚠️ Limitations
 
-Pass `GOOGLE_API_KEY` in at runtime (`-e GOOGLE_API_KEY=...` or `--env-file .env`) so it's picked up automatically — the sidebar's manual-entry expander is only a fallback for when no key is configured.
+- Research quality depends on the availability and relevance of web search results.
+- Gemini usage is subject to API rate limits and free-tier availability.
+- Citation validation checks source grounding but does not guarantee factual correctness.
+- AI-generated reports may contain inaccuracies and should be verified before academic or professional use.
 
----
+## 👨‍💻 Author
 
-## 🛠️ Tech stack
-
-| Technology | Purpose |
-| --- | --- |
-| Streamlit | Frontend UI |
-| LangGraph | Agent workflow / state machine |
-| LangChain | LLM + tool integration |
-| Google Gemini (free tier) | LLM |
-| DuckDuckGo | Web search (no API key) |
-| Pydantic | State validation |
-
----
-
-## 👤 Author
-
-**Saugat Pudasaini**
+**Saugat Pudasaini**  
 IT Undergraduate | AI/ML & Generative AI Enthusiast
+
+Interested in building practical AI applications using LLMs, RAG, LangChain, and LangGraph.
+
+---
+
+⭐ If you find this project interesting, feel free to explore the repository and build upon it.
